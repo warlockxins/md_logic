@@ -12,7 +12,7 @@ pub enum Operator {
     NE,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum Operand {
     //Operator(Operator, Box<Operand>, Box<Operand>),
     Number(f32),

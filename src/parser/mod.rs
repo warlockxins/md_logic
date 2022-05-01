@@ -62,13 +62,12 @@ impl<'a> Parser<'a> {
                 return self.consume_number();
             } else {
                 return Err(format!("unknown symbol at index {}, {:?}", _index, c));
-                self.i.next();
             }
         }
 
         Err("Reached end - unprocessed statements found".to_string())
     }
-    pub fn to_postfix(&self) -> Result<(), String> {
+    pub fn to_postfix(&self) -> Result<Vec<&Operand>, String> {
         let mut stack: Vec<&Operand> = Vec::with_capacity(50);
         let mut postfix: Vec<&Operand> = Vec::with_capacity(self.operands.len());
 
@@ -134,8 +133,7 @@ impl<'a> Parser<'a> {
             postfix.push(s_item);
         }
 
-        println!("---assembled postfix {:?}", postfix);
-        return Ok(());
+        return Ok(postfix);
     }
 
     /*  fn make_operator(
@@ -295,5 +293,52 @@ fn precedence(c: &Operator) -> i32 {
         Operator::Plus | Operator::Substract => 1,
         Operator::Division | Operator::Multiply => 2,
         _ => -1,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_expression() -> Result<(), String> {
+        let formula = "100.00<=
+ ((aA+(b*c))-d*2 )";
+
+        let v: Vec<char> = formula.chars().collect();
+
+        let mut parser = Parser::new(&v);
+        let res = parser.parse();
+        assert!(res.is_ok());
+        assert!(parser.operands.len() == 17);
+
+        let postfix = parser.to_postfix()?;
+        assert!(postfix.len() == 11);
+        assert_eq!(
+            postfix,
+            vec![
+                &Operand::Number(100.0),
+                &Operand::Variable("aA".to_string()),
+                &Operand::Variable("b".to_string()),
+                &Operand::Variable("c".to_string()),
+                &Operand::OperatorToken(Operator::Multiply),
+                &Operand::OperatorToken(Operator::Plus),
+                &Operand::Variable("d".to_string()),
+                &Operand::Number(2.0),
+                &Operand::OperatorToken(Operator::Multiply),
+                &Operand::OperatorToken(Operator::Substract),
+                &Operand::OperatorToken(Operator::LE),
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn fails_expression() {
+        let formula = "100.00<)^";
+        let v: Vec<char> = formula.chars().collect();
+        let mut parser = Parser::new(&v);
+        let res = parser.parse();
+        assert!(!res.is_ok());
     }
 }

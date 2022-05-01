@@ -3,6 +3,7 @@ extern crate serde_json;
 use serde_json::Value as JsonValue;
 
 use std::fs;
+mod parser;
 mod table_reader;
 
 #[derive(Debug)]
