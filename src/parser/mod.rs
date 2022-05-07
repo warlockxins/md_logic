@@ -81,7 +81,6 @@ impl<'a> Parser<'a> {
                 }
                 Operand::CloseParen => {
                     let mut found = false;
-                    //                    println!("on closed stack {:?}", stack);
                     while let Some(s_item) = stack.pop() {
                         match s_item {
                             Operand::OpenParen => {
@@ -95,7 +94,7 @@ impl<'a> Parser<'a> {
                     }
 
                     if found == false {
-                        return Err("no closing tag".to_string());
+                        return Err("no matching opening paren".to_string());
                     }
                 }
                 Operand::OperatorToken(t) => {
@@ -118,6 +117,7 @@ impl<'a> Parser<'a> {
                                     break;
                                 }
                             } else {
+                                stack.push(o);
                                 break;
                             }
                         }
@@ -130,38 +130,15 @@ impl<'a> Parser<'a> {
         }
 
         while let Some(s_item) = stack.pop() {
+            if s_item == &Operand::OpenParen {
+                return Err("no matching closing paren".to_string());
+            }
+
             postfix.push(s_item);
         }
 
         return Ok(postfix);
     }
-
-    /*  fn make_operator(
-            &self,
-            root: &mut Vec<Operand>,
-            operators: &mut Vec<Operator>,
-            supported_operators: &Vec<Operator>,
-        ) -> Result<(), &'static str> {
-            if operators.len() == 0 {
-                return Err("not enough operators");
-            }
-
-            if let Some(value) = operators.get(operators.len() - 1) {
-                if supported_operators.contains(value) {
-                    let right = root.pop().unwrap();
-                    let left = root.pop().unwrap();
-
-                    let oper_value = operators.pop().unwrap(); // all checked by if let some(value)
-
-                    let new_operand = Operand::Operator(oper_value, Box::new(left), Box::new(right));
-
-                    root.push(new_operand);
-                }
-            }
-
-            Ok(())
-        }
-    */
 
     fn consume_string(&mut self) -> Result<Operand, String> {
         let mut tmp: String = String::with_capacity(50); // buffer to hold temp strings
@@ -332,13 +309,65 @@ mod tests {
         );
         Ok(())
     }
+    #[test]
+    fn parses_no_paren_expression() -> Result<(), String> {
+        let formula = "aA+b *c-d*2 ";
+
+        let v: Vec<char> = formula.chars().collect();
+
+        let mut parser = Parser::new(&v);
+        let res = parser.parse();
+        assert!(res.is_ok());
+        assert!(parser.operands.len() == 9);
+
+        let postfix = parser.to_postfix()?;
+        assert!(postfix.len() == 9);
+        assert_eq!(
+            postfix,
+            vec![
+                &Operand::Variable("aA".to_string()),
+                &Operand::Variable("b".to_string()),
+                &Operand::Variable("c".to_string()),
+                &Operand::OperatorToken(Operator::Multiply),
+                &Operand::OperatorToken(Operator::Plus),
+                &Operand::Variable("d".to_string()),
+                &Operand::Number(2.0),
+                &Operand::OperatorToken(Operator::Multiply),
+                &Operand::OperatorToken(Operator::Substract),
+            ]
+        );
+        Ok(())
+    }
 
     #[test]
-    fn fails_expression() {
+    fn fails_expression_unknown_symbol() {
         let formula = "100.00<)^";
         let v: Vec<char> = formula.chars().collect();
         let mut parser = Parser::new(&v);
         let res = parser.parse();
         assert!(!res.is_ok());
+    }
+
+    #[test]
+    fn fails_expression_no_open_paren() -> Result<(), String> {
+        let formula = "100.00)";
+        let v: Vec<char> = formula.chars().collect();
+        let mut parser = Parser::new(&v);
+        parser.parse()?;
+        let postfix = parser.to_postfix();
+        assert!(!postfix.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn fails_expression_no_closing_paren() -> Result<(), String> {
+        let formula = "100.00(";
+        let v: Vec<char> = formula.chars().collect();
+        let mut parser = Parser::new(&v);
+        parser.parse()?;
+
+        let postfix = parser.to_postfix();
+        assert!(!postfix.is_ok());
+        Ok(())
     }
 }
