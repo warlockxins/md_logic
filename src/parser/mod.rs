@@ -1,18 +1,19 @@
 use std::iter::Enumerate;
 use std::iter::Peekable;
+use std::str::Chars;
 
 mod operand;
 use operand::{Operand, Operator};
 
-pub struct Parser<'a> {
-    i: Peekable<Enumerate<std::slice::Iter<'a, char>>>,
+pub struct Tokenizer<'a> {
+    i: Peekable<Enumerate<Chars<'a>>>,
     operands: Vec<Operand>,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(expression: &'a Vec<char>) -> Self {
-        return Parser {
-            i: expression.iter().enumerate().peekable(),
+impl<'a> Tokenizer<'a> {
+    pub fn new(expression: &'a str) -> Self {
+        return Tokenizer {
+            i: expression.chars().enumerate().peekable(),
             operands: Vec::with_capacity(expression.len()),
         };
     }
@@ -34,7 +35,7 @@ impl<'a> Parser<'a> {
     fn consume_spaces(&mut self) {
         loop {
             match self.i.peek() {
-                Some((_, &'\t')) | Some((_, &' ')) | Some((_, &'\n')) => {
+                Some(&(_, '\t')) | Some(&(_, ' ')) | Some(&(_, '\n')) => {
                     self.i.next();
                 }
                 _ => break,
@@ -45,7 +46,7 @@ impl<'a> Parser<'a> {
     fn next_operand(&mut self) -> Result<Operand, String> {
         let mut root: Option<Operand> = None;
 
-        while let Some((_index, &c)) = self.i.peek() {
+        while let Some(&(_index, c)) = self.i.peek() {
             if c == '(' {
                 self.i.next();
                 return Ok(Operand::OpenParen);
@@ -146,7 +147,7 @@ impl<'a> Parser<'a> {
         self.i.next();
         let mut is_closed = false;
 
-        while let Some((_index, &c)) = self.i.next() {
+        while let Some((_index, c)) = self.i.next() {
             if c == '"' {
                 is_closed = true;
                 break;
@@ -165,7 +166,7 @@ impl<'a> Parser<'a> {
     fn consume_operator(&mut self) -> Result<Operand, String> {
         let mut tmp: String = String::with_capacity(50); // buffer to hold operator
 
-        while let Some((_index, &c)) = self.i.peek() {
+        while let Some(&(_index, c)) = self.i.peek() {
             if check_if_operator(&c) {
                 tmp.push(c);
                 self.i.next();
@@ -198,7 +199,7 @@ impl<'a> Parser<'a> {
     fn consume_variable(&mut self) -> Result<Operand, String> {
         let mut tmp: String = String::with_capacity(50); // buffer to hold temp variables
 
-        while let Some((_index, &c)) = self.i.peek() {
+        while let Some(&(_index, c)) = self.i.peek() {
             if check_if_operand(&c) {
                 tmp.push(c);
                 self.i.next();
@@ -215,7 +216,7 @@ impl<'a> Parser<'a> {
 
         let mut has_dot = false;
 
-        while let Some((_index, &c)) = self.i.peek() {
+        while let Some(&(_index, c)) = self.i.peek() {
             if tmp.len() == 0 && check_if_digit(&c) {
                 tmp.push(c);
                 self.i.next();
@@ -282,9 +283,7 @@ mod tests {
         let formula = "100.00<=
  ((aA+(b*c))-d*2 )";
 
-        let v: Vec<char> = formula.chars().collect();
-
-        let mut parser = Parser::new(&v);
+        let mut parser = Tokenizer::new(&formula);
         let res = parser.parse();
         assert!(res.is_ok());
         assert!(parser.operands.len() == 17);
@@ -313,9 +312,7 @@ mod tests {
     fn parses_no_paren_expression() -> Result<(), String> {
         let formula = "aA+b *c-d*2 ";
 
-        let v: Vec<char> = formula.chars().collect();
-
-        let mut parser = Parser::new(&v);
+        let mut parser = Tokenizer::new(&formula);
         let res = parser.parse();
         assert!(res.is_ok());
         assert!(parser.operands.len() == 9);
@@ -342,8 +339,7 @@ mod tests {
     #[test]
     fn fails_expression_unknown_symbol() {
         let formula = "100.00<)^";
-        let v: Vec<char> = formula.chars().collect();
-        let mut parser = Parser::new(&v);
+        let mut parser = Tokenizer::new(&formula);
         let res = parser.parse();
         assert!(!res.is_ok());
     }
@@ -351,8 +347,7 @@ mod tests {
     #[test]
     fn fails_expression_no_open_paren() -> Result<(), String> {
         let formula = "100.00)";
-        let v: Vec<char> = formula.chars().collect();
-        let mut parser = Parser::new(&v);
+        let mut parser = Tokenizer::new(&formula);
         parser.parse()?;
         let postfix = parser.to_postfix();
         assert!(!postfix.is_ok());
@@ -362,12 +357,24 @@ mod tests {
     #[test]
     fn fails_expression_no_closing_paren() -> Result<(), String> {
         let formula = "100.00(";
-        let v: Vec<char> = formula.chars().collect();
-        let mut parser = Parser::new(&v);
+        let mut parser = Tokenizer::new(&formula);
         parser.parse()?;
 
         let postfix = parser.to_postfix();
         assert!(!postfix.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn succeeds_single_element() -> Result<(), String> {
+        let formula = "\"hello\"";
+        let mut parser = Tokenizer::new(&formula);
+        parser.parse()?;
+
+        let postfix = parser.to_postfix();
+        assert!(postfix.is_ok());
+
+        assert_eq!(postfix?, vec![&Operand::String("hello".to_string())]);
         Ok(())
     }
 }
