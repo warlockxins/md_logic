@@ -206,6 +206,8 @@ impl<'a> Tokenizer<'a> {
                 range.set_end(_index);
                 break;
             }
+
+            range.set_end(_index + 1);
         }
 
         let operator = &self.expression[range.started_at..range.ended_at];
@@ -554,7 +556,7 @@ mod tests {
 
     #[test]
     fn fails_operator_check_on_right() -> Result<(), String> {
-        let formula = "11+ ";
+        let formula = "11+";
         let mut parser = Tokenizer::new(&formula);
         parser.parse()?;
         let postfix = parser.to_postfix();
