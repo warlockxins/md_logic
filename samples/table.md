@@ -2,5 +2,5 @@
 |----------|------------|------------:|
 | string   | number     |      string |
 | ##       | ##         |          ## |
-| "Fall"   | 8        | "Spaceribs" |
-| "Winter" | 8        | "Roastbeef" |
+| "Fall"   | 8          | "Spaceribs" |
+| "Winter" | 8          | "Roastbeef" |

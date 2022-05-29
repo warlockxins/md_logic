@@ -31,10 +31,12 @@ impl TokenRange {
     }
 }
 
+type Program = Vec<Operand>;
+
 pub struct Tokenizer<'a> {
     expression: &'a str,
     i: Peekable<Enumerate<Chars<'a>>>,
-    operands: Vec<Operand>,
+    operands: Program,
 }
 
 impl<'a> Tokenizer<'a> {
@@ -225,7 +227,10 @@ impl<'a> Tokenizer<'a> {
         if let Some(token) = o {
             return Ok(Operand::OperatorToken(token));
         } else {
-            return Err("unsupported operator".to_string());
+            return Err(format!(
+                "unsupported operator \"{:?}\" at {} ",
+                o, range.started_at
+            ));
         }
     }
 
@@ -261,7 +266,8 @@ impl<'a> Tokenizer<'a> {
                     has_dot = true;
                     self.i.next();
                 } else {
-                    return Err(format!("number: multiple '.' at {}", _index));
+                    break;
+                    // return Err(format!("number: multiple '.' at {}", _index));
                 }
             } else if check_if_digit(&c) {
                 range.set_start(_index);
@@ -282,6 +288,18 @@ impl<'a> Tokenizer<'a> {
         let res_number = number.parse::<f32>().unwrap();
 
         return Ok(Operand::Number(res_number));
+    }
+
+    fn insert_start(&mut self, o: Operand) {
+        self.operands.insert(0, o);
+    }
+
+    fn starts_with_operand(&self) -> bool {
+        if let Some(Operand::OperatorToken(_)) = self.operands.get(0) {
+            return true;
+        }
+
+        false
     }
 }
 
@@ -469,4 +487,113 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn succeeds_inserting_to_biginning() -> Result<(), String> {
+        let formula = "<10";
+        let mut parser = Tokenizer::new(&formula);
+        parser.parse()?;
+
+        let start_with_operand = parser.starts_with_operand();
+        assert_eq!(start_with_operand, true);
+
+        parser.insert_start(Operand::Number(11.0));
+
+        let postfix = parser.to_postfix();
+        assert!(postfix.is_ok());
+
+        assert_eq!(
+            postfix?,
+            vec![
+                &Operand::Number(11.0),
+                &Operand::Number(10.0),
+                &Operand::OperatorToken(Operator::L)
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn succeeds_inserting_implicit_operator() -> Result<(), String> {
+        let formula = "10";
+        let mut parser = Tokenizer::new(&formula);
+        parser.parse()?;
+
+        let start_with_operand = parser.starts_with_operand();
+        assert_eq!(start_with_operand, false);
+
+        parser.insert_start(Operand::Number(11.0));
+        parser.insert_start(Operand::OperatorToken(Operator::E));
+
+        let postfix = parser.to_postfix();
+        assert!(postfix.is_ok());
+
+        assert_eq!(
+            postfix?,
+            vec![
+                &Operand::Number(11.0),
+                &Operand::Number(10.0),
+                &Operand::OperatorToken(Operator::E)
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn succeeds_operator_check() -> Result<(), String> {
+        let formula = "11+10";
+        let mut parser = Tokenizer::new(&formula);
+        parser.parse()?;
+
+        let postfix = parser.to_postfix();
+        assert!(postfix.is_ok());
+
+        assert_eq!(is_postfix_valid(&postfix?), true);
+        Ok(())
+    }
+
+    #[test]
+    fn fails_operator_check_on_right() -> Result<(), String> {
+        let formula = "11+ ";
+        let mut parser = Tokenizer::new(&formula);
+        parser.parse()?;
+        let postfix = parser.to_postfix();
+        assert_eq!(is_postfix_valid(&postfix?), false);
+        Ok(())
+    }
+
+    #[test]
+    fn fails_operator_check_on_left() -> Result<(), String> {
+        let formula = "+11";
+        let mut parser = Tokenizer::new(&formula);
+        parser.parse()?;
+        let postfix = parser.to_postfix();
+        assert_eq!(is_postfix_valid(&postfix?), false);
+        Ok(())
+    }
+}
+
+fn is_postfix_valid(postfix: &Vec<&Operand>) -> bool {
+    let mut stack: Vec<&Operand> = Vec::with_capacity(postfix.len());
+    let mut valid = false;
+
+    for p in postfix {
+        valid = false;
+
+        if let Operand::OperatorToken(o) = p {
+            let right = stack.pop();
+            let left = stack.pop();
+
+            if let Some(r) = right {
+                if let Some(l) = left {
+                    stack.push(&Operand::Number(0.0));
+                    valid = true;
+                }
+            }
+        } else {
+            stack.push(p);
+        }
+    }
+
+    valid && stack.len() == 1
 }
