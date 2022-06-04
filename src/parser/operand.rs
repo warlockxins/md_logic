@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Plus,
     Substract,
@@ -12,7 +12,7 @@ pub enum Operator {
     NE,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Operand {
     //Operator(Operator, Box<Operand>, Box<Operand>),
     Number(f32),
@@ -22,5 +22,3 @@ pub enum Operand {
     OpenParen,
     CloseParen,
 }
-
-pub type BinaryOperation = (Operator, Operand, Operand);
