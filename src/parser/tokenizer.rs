@@ -98,11 +98,11 @@ impl<'a> Tokenizer<'a> {
 
         Err("Reached end - unprocessed statements found".to_string())
     }
-    pub fn to_postfix(&self) -> Result<Vec<&Operand>, String> {
-        let mut stack: Vec<&Operand> = Vec::with_capacity(50);
-        let mut postfix: Vec<&Operand> = Vec::with_capacity(self.operands.len());
+    pub fn to_postfix(self) -> Result<Vec<Operand>, String> {
+        let mut stack: Vec<Operand> = Vec::with_capacity(50);
+        let mut postfix: Vec<Operand> = Vec::with_capacity(self.operands.len());
 
-        for o in &self.operands {
+        for o in self.operands {
             match o {
                 Operand::Number(_) | Operand::String(_) | Operand::Variable(_) => {
                     postfix.push(o);
@@ -128,7 +128,7 @@ impl<'a> Tokenizer<'a> {
                         return Err("no matching opening paren".to_string());
                     }
                 }
-                Operand::OperatorToken(t) => {
+                Operand::OperatorToken(ref t) => {
                     if stack.len() == 0 {
                         stack.push(o);
                     } else {
@@ -137,7 +137,7 @@ impl<'a> Tokenizer<'a> {
                                 stack.push(o);
                                 break;
                             } else if let Some(Operand::OperatorToken(so)) = stack.last() {
-                                if precedence(so) >= precedence(t) {
+                                if precedence(so) >= precedence(&t) {
                                     if let Some(poped_stack_item) = stack.pop() {
                                         postfix.push(poped_stack_item);
                                     } else {
@@ -161,7 +161,7 @@ impl<'a> Tokenizer<'a> {
         }
 
         while let Some(s_item) = stack.pop() {
-            if s_item == &Operand::OpenParen {
+            if s_item == Operand::OpenParen {
                 return Err("no matching closing paren".to_string());
             }
 
@@ -356,17 +356,17 @@ mod tests {
         assert_eq!(
             postfix,
             vec![
-                &Operand::Number(100.0),
-                &Operand::Variable("aA".to_string()),
-                &Operand::Variable("b".to_string()),
-                &Operand::Variable("c".to_string()),
-                &Operand::OperatorToken(Operator::Multiply),
-                &Operand::OperatorToken(Operator::Plus),
-                &Operand::Variable("d".to_string()),
-                &Operand::Number(2.0),
-                &Operand::OperatorToken(Operator::Multiply),
-                &Operand::OperatorToken(Operator::Substract),
-                &Operand::OperatorToken(Operator::LE),
+                Operand::Number(100.0),
+                Operand::Variable("aA".to_string()),
+                Operand::Variable("b".to_string()),
+                Operand::Variable("c".to_string()),
+                Operand::OperatorToken(Operator::Multiply),
+                Operand::OperatorToken(Operator::Plus),
+                Operand::Variable("d".to_string()),
+                Operand::Number(2.0),
+                Operand::OperatorToken(Operator::Multiply),
+                Operand::OperatorToken(Operator::Substract),
+                Operand::OperatorToken(Operator::LE),
             ]
         );
         Ok(())
@@ -385,15 +385,15 @@ mod tests {
         assert_eq!(
             postfix,
             vec![
-                &Operand::Variable("aA".to_string()),
-                &Operand::Variable("b".to_string()),
-                &Operand::Variable("c".to_string()),
-                &Operand::OperatorToken(Operator::Multiply),
-                &Operand::OperatorToken(Operator::Plus),
-                &Operand::Variable("d".to_string()),
-                &Operand::Number(2.0),
-                &Operand::OperatorToken(Operator::Multiply),
-                &Operand::OperatorToken(Operator::Substract),
+                Operand::Variable("aA".to_string()),
+                Operand::Variable("b".to_string()),
+                Operand::Variable("c".to_string()),
+                Operand::OperatorToken(Operator::Multiply),
+                Operand::OperatorToken(Operator::Plus),
+                Operand::Variable("d".to_string()),
+                Operand::Number(2.0),
+                Operand::OperatorToken(Operator::Multiply),
+                Operand::OperatorToken(Operator::Substract),
             ]
         );
         Ok(())
@@ -437,7 +437,7 @@ mod tests {
         let postfix = parser.to_postfix();
         assert!(postfix.is_ok());
 
-        assert_eq!(postfix?, vec![&Operand::String("hello".to_string())]);
+        assert_eq!(postfix?, vec![Operand::String("hello".to_string())]);
         Ok(())
     }
 
@@ -470,7 +470,7 @@ mod tests {
         let postfix = parser.to_postfix();
         assert!(postfix.is_ok());
 
-        assert_eq!(postfix?, vec![&Operand::Number(101.001)]);
+        assert_eq!(postfix?, vec![Operand::Number(101.001)]);
         Ok(())
     }
 
@@ -485,7 +485,7 @@ mod tests {
 
         assert_eq!(
             postfix?,
-            vec![&Operand::Variable("expectedVariable".to_string())]
+            vec![Operand::Variable("expectedVariable".to_string())]
         );
         Ok(())
     }
@@ -507,9 +507,9 @@ mod tests {
         assert_eq!(
             postfix?,
             vec![
-                &Operand::Number(11.0),
-                &Operand::Number(10.0),
-                &Operand::OperatorToken(Operator::L)
+                Operand::Number(11.0),
+                Operand::Number(10.0),
+                Operand::OperatorToken(Operator::L)
             ]
         );
         Ok(())
@@ -524,8 +524,8 @@ mod tests {
         let start_with_operand = parser.starts_with_operand();
         assert_eq!(start_with_operand, false);
 
-        parser.insert_start(Operand::Number(11.0));
         parser.insert_start(Operand::OperatorToken(Operator::E));
+        parser.insert_start(Operand::Number(11.0));
 
         let postfix = parser.to_postfix();
         assert!(postfix.is_ok());
@@ -533,9 +533,9 @@ mod tests {
         assert_eq!(
             postfix?,
             vec![
-                &Operand::Number(11.0),
-                &Operand::Number(10.0),
-                &Operand::OperatorToken(Operator::E)
+                Operand::Number(11.0),
+                Operand::Number(10.0),
+                Operand::OperatorToken(Operator::E)
             ]
         );
         Ok(())
@@ -575,7 +575,7 @@ mod tests {
     }
 }
 
-fn is_postfix_valid(postfix: &Vec<&Operand>) -> bool {
+fn is_postfix_valid(postfix: &Vec<Operand>) -> bool {
     let mut stack: Vec<&Operand> = Vec::with_capacity(postfix.len());
     let mut valid = false;
 

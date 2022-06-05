@@ -1,7 +1,7 @@
 use super::operand::{Operand, Operator};
 use super::tokenizer::Tokenizer;
 
-pub fn interpret(postfix: &Vec<&Operand>) -> Vec<Operand> {
+pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
     let mut stack: Vec<Operand> = Vec::with_capacity(postfix.len());
 
     for p in postfix {
