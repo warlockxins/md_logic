@@ -14,7 +14,7 @@ pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
                     stack.push(r + l);
                 }
                 Operator::Substract => {
-                    stack.push(r - l);
+                    stack.push(l - r);
                 }
                 _ => {}
             }
@@ -40,6 +40,18 @@ mod tests {
 
         let formula_result = interpret(&postfix?);
         assert_eq!(formula_result, [Operand::Number(3.0)]);
+        Ok(())
+    }
+
+    #[test]
+    fn interpreter_succeeds_substracting() -> Result<(), String> {
+        let formula = "2-1";
+        let mut tokenizer = Tokenizer::new(&formula);
+        tokenizer.parse()?;
+        let postfix = tokenizer.to_postfix();
+
+        let formula_result = interpret(&postfix?);
+        assert_eq!(formula_result, [Operand::Number(1.0)]);
         Ok(())
     }
 }
