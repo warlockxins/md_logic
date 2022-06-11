@@ -6,23 +6,17 @@ pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
 
     for p in postfix {
         if let Operand::OperatorToken(o) = p {
-            let right = stack.pop();
-            let left = stack.pop();
+            let r = stack.pop().unwrap();
+            let l = stack.pop().unwrap();
 
-            if let Some(r) = right {
-                if let Some(l) = left {
-                    match o {
-                        Operator::Plus => {
-                            if let Operand::Number(r_number) = r {
-                                if let Operand::Number(l_number) = l {
-                                    let sum: f32 = l_number + r_number;
-                                    stack.push(Operand::Number(sum));
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
+            match o {
+                Operator::Plus => {
+                    stack.push(r + l);
                 }
+                Operator::Substract => {
+                    stack.push(r - l);
+                }
+                _ => {}
             }
         } else {
             stack.push(p.clone().to_owned());
