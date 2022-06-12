@@ -17,6 +17,8 @@ pub enum Operator {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Operand {
+    None,
+    Boolean(bool),
     Number(f32),
     String(String),
     Variable(String),

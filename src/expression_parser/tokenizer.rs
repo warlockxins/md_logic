@@ -104,7 +104,11 @@ impl<'a> Tokenizer<'a> {
 
         for o in self.operands {
             match o {
-                Operand::Number(_) | Operand::String(_) | Operand::Variable(_) => {
+                Operand::Boolean(_)
+                | Operand::None
+                | Operand::Number(_)
+                | Operand::String(_)
+                | Operand::Variable(_) => {
                     postfix.push(o);
                 }
                 Operand::OpenParen => {
@@ -251,6 +255,12 @@ impl<'a> Tokenizer<'a> {
         }
 
         let variable = &self.expression[range.started_at..range.ended_at + 1];
+
+        let reservedBoolKeywords = ["true", "false"];
+
+        if (reservedBoolKeywords.contains(&variable)) {
+            return Ok(Operand::Boolean(variable == "true"));
+        }
 
         return Ok(Operand::Variable(variable.to_string()));
     }
@@ -542,6 +552,23 @@ mod tests {
     }
 
     #[test]
+    fn reserved_bool_operand() -> Result<(), String> {
+        let formula = "true + false";
+        let mut parser = Tokenizer::new(&formula);
+        parser.parse()?;
+        let postfix = parser.to_postfix();
+        assert_eq!(
+            postfix?,
+            vec![
+                Operand::Boolean(true),
+                Operand::Boolean(false),
+                Operand::OperatorToken(Operator::Plus)
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
     fn succeeds_operator_check() -> Result<(), String> {
         let formula = "11+10";
         let mut parser = Tokenizer::new(&formula);
@@ -583,14 +610,12 @@ fn is_postfix_valid(postfix: &Vec<Operand>) -> bool {
         valid = false;
 
         if let Operand::OperatorToken(o) = p {
-            let right = stack.pop();
-            let left = stack.pop();
+            let right = stack.pop().is_some();
+            let left = stack.pop().is_some();
 
-            if let Some(r) = right {
-                if let Some(l) = left {
-                    stack.push(&Operand::Number(0.0));
-                    valid = true;
-                }
+            if right == left {
+                stack.push(&Operand::None);
+                valid = true;
             }
         } else {
             stack.push(p);

@@ -1,6 +1,8 @@
 extern crate serde_json;
 use serde_json::Value as JsonValue;
 
+use crate::expression_parser::operand::Operand;
+
 pub fn get_context_var(name: &String, context: &serde_json::Value) -> serde_json::Value {
     let v: Vec<&str> = name.split('.').collect();
 
@@ -15,11 +17,40 @@ pub fn get_context_var(name: &String, context: &serde_json::Value) -> serde_json
     cur.clone()
 }
 
+pub fn var_to_operand(name: &String, context: &serde_json::Value) -> Operand {
+    let v = get_context_var(name, &context);
+    match v {
+        JsonValue::String(s) => Operand::String(s),
+        JsonValue::Number(n) => {
+            let n_value: f32 = n.as_f64().unwrap_or(0.0) as f32;
+            Operand::Number(n_value)
+        }
+        _ => Operand::None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
     use super::*;
+    #[test]
+    fn succeeds_get_context_value_as_operand() -> Result<(), String> {
+        let json_str = r#"{ "season": "Fall", "preferences": { "type": "vegetarian" }, "count": 1 }
+                "#;
 
+        let context: serde_json::Value = serde_json::from_str(json_str).unwrap();
+
+        let c = var_to_operand(&"season".to_owned(), &context);
+        assert_eq!(c, Operand::String("Fall".to_owned()));
+
+        let num = var_to_operand(&"count".to_owned(), &context);
+        assert_eq!(num, Operand::Number(1.0));
+
+        let missing_val = var_to_operand(&"NoExist.subParam".to_owned(), &context);
+        assert_eq!(missing_val, Operand::None);
+
+        Ok(())
+    }
     #[test]
     fn succeeds_get_context_value() -> Result<(), String> {
         let json_str = r#"{ "season": "Fall", "preferences": { "type": "vegetarian" }, "count": 1 }
