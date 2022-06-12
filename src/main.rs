@@ -4,8 +4,8 @@ use serde_json::Value as JsonValue;
 
 use std::fs;
 mod context;
+mod expression_parser;
 mod logic_table;
-mod parser;
 
 use context::get_context_var;
 
