@@ -33,7 +33,7 @@ impl Add for Operand {
     fn add(self, other: Self) -> Self {
         match (self, other) {
             (Operand::Number(n1), Operand::Number(n2)) => Operand::Number(n1 + n2),
-            (_, _1) => Operand::Number(0.0),
+            (_, _1) => Operand::None,
         }
     }
 }
@@ -44,7 +44,33 @@ impl Sub for Operand {
     fn sub(self, other: Self) -> Self {
         match (self, other) {
             (Operand::Number(n1), Operand::Number(n2)) => Operand::Number(n1 - n2),
-            (_, _1) => Operand::Number(0.0),
+            (_, _1) => Operand::None,
         }
     }
 }
+
+impl std::cmp::Ord for Operand {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Operand::Number(n1), Operand::Number(n2)) => {
+                if n1 > n2 {
+                    return std::cmp::Ordering::Greater;
+                }
+                if n1 < n2 {
+                    return std::cmp::Ordering::Less;
+                }
+
+                return std::cmp::Ordering::Equal;
+            }
+            (_, _1) => std::cmp::Ordering::Equal,
+        }
+    }
+}
+
+impl PartialOrd for Operand {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Eq for Operand {}

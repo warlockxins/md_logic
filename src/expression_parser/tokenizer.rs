@@ -258,7 +258,7 @@ impl<'a> Tokenizer<'a> {
 
         let reservedBoolKeywords = ["true", "false"];
 
-        if (reservedBoolKeywords.contains(&variable)) {
+        if reservedBoolKeywords.contains(&variable) {
             return Ok(Operand::Boolean(variable == "true"));
         }
 
@@ -497,6 +497,19 @@ mod tests {
             postfix?,
             vec![Operand::Variable("expectedVariable".to_string())]
         );
+        Ok(())
+    }
+
+    #[test]
+    fn succeeds_single_boolean() -> Result<(), String> {
+        let formula = "true";
+        let mut parser = Tokenizer::new(&formula);
+        parser.parse()?;
+
+        let postfix = parser.to_postfix();
+        assert!(postfix.is_ok());
+
+        assert_eq!(postfix?, vec![Operand::Boolean(true)]);
         Ok(())
     }
 
