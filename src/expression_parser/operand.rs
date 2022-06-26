@@ -1,4 +1,6 @@
 use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
 use std::ops::Sub;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -33,6 +35,7 @@ impl Add for Operand {
     fn add(self, other: Self) -> Self {
         match (self, other) {
             (Operand::Number(n1), Operand::Number(n2)) => Operand::Number(n1 + n2),
+            (Operand::String(s1), Operand::String(s2)) => Operand::String(format!("{}{}", s1, s2)),
             (_, _1) => Operand::None,
         }
     }
@@ -44,6 +47,33 @@ impl Sub for Operand {
     fn sub(self, other: Self) -> Self {
         match (self, other) {
             (Operand::Number(n1), Operand::Number(n2)) => Operand::Number(n1 - n2),
+            (_, _1) => Operand::None,
+        }
+    }
+}
+
+impl Mul for Operand {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        match (self, other) {
+            (Operand::Number(n1), Operand::Number(n2)) => Operand::Number(n1 * n2),
+            (_, _1) => Operand::None,
+        }
+    }
+}
+
+impl Div for Operand {
+    type Output = Self;
+
+    fn div(self, other: Self) -> Self {
+        match (self, other) {
+            (Operand::Number(n1), Operand::Number(n2)) => {
+                if n2 == 0.0 {
+                    return Operand::None;
+                }
+                return Operand::Number(n1 / n2);
+            }
             (_, _1) => Operand::None,
         }
     }

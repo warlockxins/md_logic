@@ -10,7 +10,7 @@ pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
             let l = stack.pop().unwrap();
 
             match o {
-                Operator::Plus => stack.push(r + l),
+                Operator::Plus => stack.push(l + r),
 
                 Operator::Substract => stack.push(l - r),
 
@@ -20,16 +20,15 @@ pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
 
                 Operator::L => stack.push(Operand::Boolean(l < r)),
 
-                Operator::LE => {
-                    println!("--->{:?} {:?}", l, r);
-                    stack.push(Operand::Boolean(l <= r));
-                }
+                Operator::LE => stack.push(Operand::Boolean(l <= r)),
 
                 Operator::E => stack.push(Operand::Boolean(l == r)),
 
                 Operator::NE => stack.push(Operand::Boolean(l != r)),
 
-                _ => {}
+                Operator::Multiply => stack.push(l * r),
+
+                Operator::Division => stack.push(l / r),
             }
         } else {
             stack.push(p.clone().to_owned());
@@ -55,6 +54,15 @@ mod tests {
         let postfix = postfix_for("2+1");
         let formula_result = interpret(&postfix?);
         assert_eq!(formula_result, [Operand::Number(3.0)]);
+        Ok(())
+    }
+
+    #[test]
+    fn interpreter_succeeds_adding_string() -> Result<(), String> {
+        let postfix = postfix_for("\"hello\"+\"world\"");
+
+        let formula_result = interpret(&postfix?);
+        assert_eq!(formula_result, [Operand::String("helloworld".to_string())]);
         Ok(())
     }
 
@@ -103,6 +111,38 @@ mod tests {
         let postfix = postfix_for("20!=20");
         let formula_result = interpret(&postfix?);
         assert_eq!(formula_result, [Operand::Boolean(false)]);
+        Ok(())
+    }
+
+    #[test]
+    fn interpreter_succeeds_multiply() -> Result<(), String> {
+        let postfix = postfix_for("20*2");
+        let formula_result = interpret(&postfix?);
+        assert_eq!(formula_result, [Operand::Number(40.0)]);
+        Ok(())
+    }
+
+    #[test]
+    fn interpreter_succeeds_divide() -> Result<(), String> {
+        let postfix = postfix_for("20/2");
+        let formula_result = interpret(&postfix?);
+        assert_eq!(formula_result, [Operand::Number(10.0)]);
+        Ok(())
+    }
+
+    #[test]
+    fn interpreter_succeeds_divide_by_zero() -> Result<(), String> {
+        let postfix = postfix_for("20/0");
+        let formula_result = interpret(&postfix?);
+        assert_eq!(formula_result, [Operand::None]);
+        Ok(())
+    }
+
+    #[test]
+    fn interpreter_succeeds_exuality_check() -> Result<(), String> {
+        let postfix = postfix_for("2+1=4-1");
+        let formula_result = interpret(&postfix?);
+        assert_eq!(formula_result, [Operand::Boolean(true)]);
         Ok(())
     }
 }
