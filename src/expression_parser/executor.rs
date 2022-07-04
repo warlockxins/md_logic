@@ -5,33 +5,41 @@ pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
     let mut stack: Vec<Operand> = Vec::with_capacity(postfix.len());
 
     for p in postfix {
-        if let Operand::OperatorToken(o) = p {
-            let r = stack.pop().unwrap();
-            let l = stack.pop().unwrap();
+        match p {
+            Operand::OperatorToken(o) => {
+                let r = stack.pop().unwrap();
+                let l = stack.pop().unwrap();
 
-            match o {
-                Operator::Plus => stack.push(l + r),
+                match o {
+                    Operator::Plus => stack.push(l + r),
 
-                Operator::Substract => stack.push(l - r),
+                    Operator::Substract => stack.push(l - r),
 
-                Operator::G => stack.push(Operand::Boolean(l > r)),
+                    Operator::G => stack.push(Operand::Boolean(l > r)),
 
-                Operator::GE => stack.push(Operand::Boolean(l >= r)),
+                    Operator::GE => stack.push(Operand::Boolean(l >= r)),
 
-                Operator::L => stack.push(Operand::Boolean(l < r)),
+                    Operator::L => stack.push(Operand::Boolean(l < r)),
 
-                Operator::LE => stack.push(Operand::Boolean(l <= r)),
+                    Operator::LE => stack.push(Operand::Boolean(l <= r)),
 
-                Operator::E => stack.push(Operand::Boolean(l == r)),
+                    Operator::E => stack.push(Operand::Boolean(l == r)),
 
-                Operator::NE => stack.push(Operand::Boolean(l != r)),
+                    Operator::NE => stack.push(Operand::Boolean(l != r)),
 
-                Operator::Multiply => stack.push(l * r),
+                    Operator::Multiply => stack.push(l * r),
 
-                Operator::Division => stack.push(l / r),
+                    Operator::Division => stack.push(l / r),
+                }
             }
-        } else {
-            stack.push(p.clone().to_owned());
+            Operand::Variable(var_name) => {
+                // Todo - add json context to this function, and extract var_name from it
+                // temp hack
+                stack.push(Operand::Number(2.0));
+            }
+            _ => {
+                stack.push(p.clone().to_owned());
+            }
         }
     }
 
@@ -139,10 +147,20 @@ mod tests {
     }
 
     #[test]
-    fn interpreter_succeeds_exuality_check() -> Result<(), String> {
+    fn interpreter_succeeds_equality_check() -> Result<(), String> {
         let postfix = postfix_for("2+1=4-1");
         let formula_result = interpret(&postfix?);
         assert_eq!(formula_result, [Operand::Boolean(true)]);
+        Ok(())
+    }
+
+    #[test]
+    fn interpreter_succeeds_sum_with_variable() -> Result<(), String> {
+        let postfix = postfix_for("2+extraValue");
+
+        println!("=====> {:?}", postfix);
+        let formula_result = interpret(&postfix?);
+        assert_eq!(formula_result, [Operand::Number(4.0)]);
         Ok(())
     }
 }

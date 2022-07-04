@@ -98,3 +98,33 @@ pub fn run_table(table: &Table, context: &serde_json::Value) {
         }
     }
 }
+
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn get_test_table() -> Result<Table, String> {
+        let contents = fs::read_to_string("./samples/table.md")
+            .expect("Something went wrong reading the TEST file");
+
+        //       println!("{}", contents);
+
+        Ok(parse(&contents))
+    }
+
+    #[test]
+    fn correct_md_table_size() -> Result<(), String> {
+        let table = get_test_table()?;
+        assert_eq!(table.defs.inputs.len(), 2);
+        assert_eq!(table.defs.outputs.len(), 1);
+        assert_eq!(table.rows.len(), 6);
+
+        assert_eq!(table.defs.inputs[0].1, "string".to_owned());
+        assert_eq!(table.defs.inputs[1].1, "number".to_owned());
+        assert_eq!(table.defs.outputs[0].1, "string".to_owned());
+
+        assert_eq!(table.rows[5].cells[2], "\"Roastbeef\"".to_owned());
+
+        Ok(())
+    }
+}
