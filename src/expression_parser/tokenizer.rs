@@ -302,11 +302,11 @@ impl<'a> Tokenizer<'a> {
         return Ok(Operand::Number(res_number));
     }
 
-    fn insert_start(&mut self, o: Operand) {
+    pub fn insert_start(&mut self, o: Operand) {
         self.operands.insert(0, o);
     }
 
-    fn starts_with_operand(&self) -> bool {
+    pub fn starts_with_operand(&self) -> bool {
         if let Some(Operand::OperatorToken(_)) = self.operands.get(0) {
             return true;
         }

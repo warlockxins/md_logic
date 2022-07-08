@@ -158,7 +158,6 @@ mod tests {
     fn interpreter_succeeds_sum_with_variable() -> Result<(), String> {
         let postfix = postfix_for("2+extraValue");
 
-        println!("=====> {:?}", postfix);
         let formula_result = interpret(&postfix?);
         assert_eq!(formula_result, [Operand::Number(4.0)]);
         Ok(())

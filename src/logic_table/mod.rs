@@ -1,6 +1,13 @@
+use crate::context::var_to_operand;
+use crate::expression_parser::executor::interpret;
+use crate::expression_parser::operand::{Operand, Operator};
+use crate::expression_parser::tokenizer::Tokenizer;
+
 use crate::get_context_var;
+
 extern crate serde_json;
 use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Definition {
@@ -80,23 +87,61 @@ pub fn parse(contents: &String) -> Table {
     table
 }
 
-pub fn run_table(table: &Table, context: &serde_json::Value) {
-    let tempN: f64 = 8.0;
+pub fn run_table(
+    table: &Table,
+    context: &serde_json::Value,
+) -> Result<(Vec<HashMap<String, Operand>>), String> {
+    let mut outputs: Vec<HashMap<String, Operand>> = vec![];
+    let mut row_is_true = false;
 
     for row_index in logic_start_row..table.rows.len() {
-        for d_index in 0..table.defs.inputs.len() {
-            let (var_name, var_type) = &table.defs.inputs[d_index];
-            let val = get_context_var(var_name, &context);
+        row_is_true = true;
 
-            let is_eq: bool = match val {
-                JsonValue::String(column_string) => true,
-                JsonValue::Number(column_number) => column_number.as_f64() == Some(tempN),
-                _ => false,
-            };
+        for col_index in 0..table.defs.inputs.len() {
+            let (var_name, var_type) = &table.defs.inputs[col_index];
+            let input_operand = var_to_operand(var_name, &context);
+            let column_value = &table.rows[row_index].cells[col_index];
+            let mut parser = Tokenizer::new(&column_value);
 
-            println!("-------res {}", is_eq);
+            parser.parse()?;
+
+            let start_with_operand = parser.starts_with_operand();
+            if !start_with_operand {
+                parser.insert_start(input_operand);
+                parser.insert_start(Operand::OperatorToken(Operator::E));
+            } else {
+                parser.insert_start(input_operand);
+            }
+
+            let expression = parser.to_postfix()?;
+            let expr_result = interpret(&expression);
+            if let Some(Operand::Boolean(true)) = expr_result.get(0) {
+                row_is_true = true;
+            } else {
+                row_is_true = false;
+                break;
+            }
+        }
+
+        if row_is_true {
+            // println!("should set output to {:?}", table.defs.outputs);
+            let mut output_result: HashMap<String, Operand> = HashMap::new();
+
+            let offset = table.defs.inputs.len();
+            for col_index in 0..table.defs.outputs.len() {
+                let column_output_value = &table.rows[row_index].cells[col_index + offset];
+                let (outKey, _operand_type) = &table.defs.outputs[col_index];
+                output_result.insert(
+                    outKey.to_owned(),
+                    Operand::String(column_output_value.to_owned()),
+                );
+            }
+
+            outputs.push(output_result);
         }
     }
+
+    Ok((outputs))
 }
 
 mod tests {
@@ -106,8 +151,6 @@ mod tests {
     fn get_test_table() -> Result<Table, String> {
         let contents = fs::read_to_string("./samples/table.md")
             .expect("Something went wrong reading the TEST file");
-
-        //       println!("{}", contents);
 
         Ok(parse(&contents))
     }
@@ -124,6 +167,28 @@ mod tests {
         assert_eq!(table.defs.outputs[0].1, "string".to_owned());
 
         assert_eq!(table.rows[5].cells[2], "\"Roastbeef\"".to_owned());
+
+        Ok(())
+    }
+
+    #[test]
+    fn execute_md_table() -> Result<(), String> {
+        let table = get_test_table()?;
+        let json_str = r#"
+        { "season": "Fall", "guestCount": 8 }
+        "#;
+
+        let context: serde_json::Value = serde_json::from_str(json_str).unwrap();
+        let res = run_table(&table, &context)?;
+
+        assert_eq!(res.len(), 1);
+
+        let firs_res = &res[0];
+        assert_eq!(firs_res.contains_key("desiredDish"), true);
+        assert_eq!(
+            firs_res.get("desiredDish"),
+            Some(&Operand::String("\"Spaceribs\"".to_owned()))
+        );
 
         Ok(())
     }
