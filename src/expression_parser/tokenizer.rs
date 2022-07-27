@@ -159,7 +159,7 @@ impl<'a> Tokenizer<'a> {
                     }
                 }
                 _ => {
-                    println!("-rest of prefix {:?}", o);
+                    // println!("-rest of prefix {:?}", o);
                 }
             }
         }
