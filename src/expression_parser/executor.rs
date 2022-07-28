@@ -32,7 +32,7 @@ pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
                     Operator::Division => stack.push(l / r),
                 }
             }
-            Operand::Variable(var_name) => {
+            Operand::Variable(_var_name) => {
                 // Todo - add json context to this function, and extract var_name from it
                 // temp hack
                 stack.push(Operand::Number(2.0));

@@ -74,8 +74,6 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn next_operand(&mut self) -> Result<Operand, String> {
-        let mut root: Option<Operand> = None;
-
         while let Some(&(_index, c)) = self.i.peek() {
             if c == '(' {
                 self.i.next();
@@ -157,9 +155,6 @@ impl<'a> Tokenizer<'a> {
                             }
                         }
                     }
-                }
-                _ => {
-                    // println!("-rest of prefix {:?}", o);
                 }
             }
         }
@@ -256,9 +251,9 @@ impl<'a> Tokenizer<'a> {
 
         let variable = &self.expression[range.started_at..range.ended_at + 1];
 
-        let reservedBoolKeywords = ["true", "false"];
+        let reserved_bool_keywords = ["true", "false"];
 
-        if reservedBoolKeywords.contains(&variable) {
+        if reserved_bool_keywords.contains(&variable) {
             return Ok(Operand::Boolean(variable == "true"));
         }
 
@@ -622,7 +617,7 @@ fn is_postfix_valid(postfix: &Vec<Operand>) -> bool {
     for p in postfix {
         valid = false;
 
-        if let Operand::OperatorToken(o) = p {
+        if let Operand::OperatorToken(_o) = p {
             let right = stack.pop().is_some();
             let left = stack.pop().is_some();
 

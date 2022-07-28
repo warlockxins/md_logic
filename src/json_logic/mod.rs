@@ -11,12 +11,35 @@ enum Opss {
     Less(OrderingOperation),
     #[serde(alias = "=")]
     Eq(OrderingOperation),
+    #[serde(alias = "<=")]
+    LessEq(OrderingOperation),
 }
 
 impl Opss {
     fn execute(&self) -> AllCombined {
-        // println!("ooooooops {:?}", self);
-        return AllCombined::OpList(vec![]);
+        let (op, arguments) = match self {
+            Opss::Less(l) => (Operations::Less, l),
+            Opss::More(l) => (Operations::More, l),
+            Opss::Eq(l) => (Operations::Eq, l),
+            Opss::LessEq(l) => (Operations::LessEq, l),
+        };
+        if arguments.len() < 2 {
+            return AllCombined::Primitive(Value::Bool(false));
+        }
+
+        let built_list = execute_combined_list(&arguments);
+
+        let left = &built_list[0];
+        let right = &built_list[1];
+
+        let res_bool = match op {
+            Operations::Less => left < right,
+            Operations::More => left > right,
+            Operations::Eq => left == right,
+            Operations::LessEq => left <= right,
+        };
+
+        AllCombined::Primitive(Value::Bool(res_bool))
     }
 }
 
@@ -37,7 +60,7 @@ enum Operations {
     More,
     Less,
     Eq, // MoreEq,
-        // LessEq
+    LessEq,
 }
 
 impl AllCombined {
@@ -47,31 +70,7 @@ impl AllCombined {
                 let s: Vec<AllCombined> = execute_combined_list(&l);
                 AllCombined::OpList(s)
             }
-            AllCombined::Ops(o) => {
-                let (op, arguments) = match o {
-                    Opss::Less(l) => (Operations::Less, l),
-                    Opss::More(l) => (Operations::More, l),
-                    Opss::Eq(l) => (Operations::Eq, l),
-                };
-                if arguments.len() < 2 {
-                    return AllCombined::Primitive(Value::Bool(false));
-                }
-
-                let built_list = execute_combined_list(&arguments);
-
-                let left = &built_list[0];
-                let right = &built_list[1];
-
-                let res_bool = match op {
-                    Operations::Less => left < right,
-                    Operations::More => left > right,
-                    Operations::Eq => left == right,
-                };
-
-                // println!("Oper {:?} {:?}  {:?} ? {}", left, op, right, res_bool);
-
-                AllCombined::Primitive(Value::Bool(res_bool))
-            }
+            AllCombined::Ops(o) => o.execute(),
             AllCombined::Primitive(v) => AllCombined::Primitive(v.clone()),
         }
     }
@@ -119,6 +118,7 @@ mod tests {
             (r#" { ">" : [3,10] }"#, false),
             (r#" { "<" : [3,10] }"#, true),
             (r#" { "=" : [10.0,10.0] }"#, true),
+            (r#" { "<=" : [10.0,10.0] }"#, true),
         ];
 
         for (data, expected) in cases {

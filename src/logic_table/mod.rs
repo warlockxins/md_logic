@@ -3,10 +3,6 @@ use crate::expression_parser::executor::interpret;
 use crate::expression_parser::operand::{Operand, Operator};
 use crate::expression_parser::tokenizer::Tokenizer;
 
-use crate::get_context_var;
-
-extern crate serde_json;
-use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -15,10 +11,10 @@ pub struct Definition {
     pub outputs: Vec<(String, String)>,
 }
 
-const header_row: usize = 0;
-const io_row: usize = 1;
-const type_row: usize = 2;
-const logic_start_row: usize = 4;
+const HEADER_ROW: usize = 0;
+const IO_ROW: usize = 1;
+const TYPE_ROW: usize = 2;
+const LOGIC_START_ROW: usize = 4;
 
 #[derive(Debug)]
 pub struct Table {
@@ -32,7 +28,7 @@ pub struct Row {
 }
 
 pub fn parse(contents: &String) -> Table {
-    let mut newLine = true;
+    let mut new_line = true;
     let mut tmp: String = String::new();
 
     let mut table: Table = Table {
@@ -45,10 +41,10 @@ pub fn parse(contents: &String) -> Table {
 
     for c in contents.chars() {
         if c == '|' {
-            if newLine {
+            if new_line {
                 table.rows.push(Row { cells: vec![] });
 
-                newLine = false;
+                new_line = false;
             } else {
                 if let Some(row) = table.rows.last_mut() {
                     row.cells.push(tmp.trim().to_string());
@@ -59,17 +55,17 @@ pub fn parse(contents: &String) -> Table {
         }
 
         if c == '\n' {
-            newLine = true;
+            new_line = true;
             continue;
         }
 
         tmp.push(c);
     }
 
-    for col_index in 0..table.rows[header_row].cells.len() {
-        let io_def = &table.rows[io_row].cells[col_index];
-        let column_variable = &table.rows[header_row].cells[col_index];
-        let type_variable = &table.rows[type_row].cells[col_index];
+    for col_index in 0..table.rows[HEADER_ROW].cells.len() {
+        let io_def = &table.rows[IO_ROW].cells[col_index];
+        let column_variable = &table.rows[HEADER_ROW].cells[col_index];
+        let type_variable = &table.rows[TYPE_ROW].cells[col_index];
 
         if io_def.starts_with("-") && io_def.ends_with("-") {
             table
@@ -90,15 +86,15 @@ pub fn parse(contents: &String) -> Table {
 pub fn run_table(
     table: &Table,
     context: &serde_json::Value,
-) -> Result<(Vec<HashMap<String, Operand>>), String> {
+) -> Result<Vec<HashMap<String, Operand>>, String> {
     let mut outputs: Vec<HashMap<String, Operand>> = vec![];
-    let mut row_is_true = false;
+    let mut row_is_true;
 
-    for row_index in logic_start_row..table.rows.len() {
+    for row_index in LOGIC_START_ROW..table.rows.len() {
         row_is_true = true;
 
         for col_index in 0..table.defs.inputs.len() {
-            let (var_name, var_type) = &table.defs.inputs[col_index];
+            let (var_name, _var_type) = &table.defs.inputs[col_index];
             let input_operand = var_to_operand(var_name, &context);
             let column_value = &table.rows[row_index].cells[col_index];
             let mut parser = Tokenizer::new(&column_value);
@@ -130,9 +126,9 @@ pub fn run_table(
             let offset = table.defs.inputs.len();
             for col_index in 0..table.defs.outputs.len() {
                 let column_output_value = &table.rows[row_index].cells[col_index + offset];
-                let (outKey, _operand_type) = &table.defs.outputs[col_index];
+                let (out_key, _operand_type) = &table.defs.outputs[col_index];
                 output_result.insert(
-                    outKey.to_owned(),
+                    out_key.to_owned(),
                     Operand::String(column_output_value.to_owned()),
                 );
             }
@@ -141,7 +137,7 @@ pub fn run_table(
         }
     }
 
-    Ok((outputs))
+    Ok(outputs)
 }
 
 mod tests {
