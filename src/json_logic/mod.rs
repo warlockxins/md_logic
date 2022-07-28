@@ -13,6 +13,20 @@ enum Opss {
     Eq(OrderingOperation),
     #[serde(alias = "<=")]
     LessEq(OrderingOperation),
+    #[serde(alias = ">=")]
+    MoreEq(OrderingOperation),
+    #[serde(alias = "!=")]
+    Neq(OrderingOperation),
+}
+
+#[derive(Debug)]
+enum Operations {
+    More,
+    Less,
+    Eq,
+    Neq,
+    MoreEq,
+    LessEq,
 }
 
 impl Opss {
@@ -22,6 +36,8 @@ impl Opss {
             Opss::More(l) => (Operations::More, l),
             Opss::Eq(l) => (Operations::Eq, l),
             Opss::LessEq(l) => (Operations::LessEq, l),
+            Opss::MoreEq(l) => (Operations::MoreEq, l),
+            Opss::Neq(l) => (Operations::Neq, l),
         };
         if arguments.len() < 2 {
             return AllCombined::Primitive(Value::Bool(false));
@@ -37,6 +53,8 @@ impl Opss {
             Operations::More => left > right,
             Operations::Eq => left == right,
             Operations::LessEq => left <= right,
+            Operations::MoreEq => left >= right,
+            Operations::Neq => left != right,
         };
 
         AllCombined::Primitive(Value::Bool(res_bool))
@@ -53,14 +71,6 @@ enum AllCombined {
     Ops(Opss),
     OpList(Vec<AllCombined>),
     Primitive(Value),
-}
-
-#[derive(Debug)]
-enum Operations {
-    More,
-    Less,
-    Eq, // MoreEq,
-    LessEq,
 }
 
 impl AllCombined {
@@ -116,9 +126,16 @@ mod tests {
     fn serializes_more_operator_enum_representation() -> Result<()> {
         let cases = vec![
             (r#" { ">" : [3,10] }"#, false),
+            (r#" { ">" : [10,3] }"#, true),
             (r#" { "<" : [3,10] }"#, true),
+            (r#" { "<" : [30,10] }"#, false),
             (r#" { "=" : [10.0,10.0] }"#, true),
             (r#" { "<=" : [10.0,10.0] }"#, true),
+            (r#" { "<=" : [12.0,10.0] }"#, false),
+            (r#" { ">=" : [10.0,10.0] }"#, true),
+            (r#" { ">=" : [9.0,10.0] }"#, false),
+            (r#" { "!=" : [9.0,10.0] }"#, true),
+            (r#" { "!=" : [10.0,10.0] }"#, false),
         ];
 
         for (data, expected) in cases {
