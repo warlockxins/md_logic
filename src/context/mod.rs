@@ -1,4 +1,5 @@
 extern crate serde_json;
+use serde_json::Number;
 use serde_json::Value as JsonValue;
 
 use crate::expression_parser::operand::Operand;
@@ -20,12 +21,13 @@ pub fn get_context_var(name: &String, context: &serde_json::Value) -> serde_json
 pub fn var_to_operand(name: &String, context: &serde_json::Value) -> Operand {
     let v = get_context_var(name, &context);
     match v {
-        JsonValue::String(s) => Operand::String(s),
+        JsonValue::String(s) => Operand::Primitive(JsonValue::String(s)), //Operand::String(s),
         JsonValue::Number(n) => {
-            let n_value: f32 = n.as_f64().unwrap_or(0.0) as f32;
-            Operand::Number(n_value)
+            let n_value = n.as_f64().unwrap_or(0.0);
+
+            Operand::Primitive(JsonValue::Number(Number::from_f64(n_value).unwrap()))
         }
-        _ => Operand::None,
+        _ => Operand::Primitive(JsonValue::Null),
     }
 }
 
@@ -41,13 +43,16 @@ mod tests {
         let context: serde_json::Value = serde_json::from_str(json_str).unwrap();
 
         let c = var_to_operand(&"season".to_owned(), &context);
-        assert_eq!(c, Operand::String("Fall".to_owned()));
+        assert_eq!(c, Operand::Primitive(JsonValue::String("Fall".to_owned())));
 
         let num = var_to_operand(&"count".to_owned(), &context);
-        assert_eq!(num, Operand::Number(1.0));
+        assert_eq!(
+            num,
+            Operand::Primitive(JsonValue::Number(Number::from_f64(1.0).unwrap()))
+        );
 
         let missing_val = var_to_operand(&"NoExist.subParam".to_owned(), &context);
-        assert_eq!(missing_val, Operand::None);
+        assert_eq!(missing_val, Operand::Primitive(JsonValue::Null));
 
         Ok(())
     }

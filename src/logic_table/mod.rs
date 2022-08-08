@@ -2,6 +2,7 @@ use crate::context::var_to_operand;
 use crate::expression_parser::executor::interpret;
 use crate::expression_parser::operand::{Operand, Operator};
 use crate::expression_parser::tokenizer::Tokenizer;
+use serde_json::Value;
 
 use std::collections::HashMap;
 
@@ -111,7 +112,11 @@ pub fn run_table(
 
             let expression = parser.to_postfix()?;
             let expr_result = interpret(&expression);
-            if let Some(Operand::Boolean(true)) = expr_result.get(0) {
+            if let Some(
+                // Operand::Boolean(true)
+                Operand::Primitive(Value::Bool(true)),
+            ) = expr_result.get(0)
+            {
                 row_is_true = true;
             } else {
                 row_is_true = false;
@@ -129,7 +134,7 @@ pub fn run_table(
                 let (out_key, _operand_type) = &table.defs.outputs[col_index];
                 output_result.insert(
                     out_key.to_owned(),
-                    Operand::String(column_output_value.to_owned()),
+                    Operand::Primitive(Value::String(column_output_value.to_owned())),
                 );
             }
 
@@ -183,7 +188,9 @@ mod tests {
         assert_eq!(firs_res.contains_key("desiredDish"), true);
         assert_eq!(
             firs_res.get("desiredDish"),
-            Some(&Operand::String("\"Spaceribs\"".to_owned()))
+            Some(&Operand::Primitive(Value::String(
+                "\"Spaceribs\"".to_owned()
+            )))
         );
 
         Ok(())

@@ -1,5 +1,6 @@
 use super::operand::{Operand, Operator};
 use super::tokenizer::Tokenizer;
+use serde_json::{Number, Value};
 
 pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
     let mut stack: Vec<Operand> = Vec::with_capacity(postfix.len());
@@ -15,17 +16,17 @@ pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
 
                     Operator::Substract => stack.push(l - r),
 
-                    Operator::G => stack.push(Operand::Boolean(l > r)),
+                    Operator::G => stack.push(Operand::Primitive(Value::Bool(l > r))),
 
-                    Operator::GE => stack.push(Operand::Boolean(l >= r)),
+                    Operator::GE => stack.push(Operand::Primitive(Value::Bool(l >= r))),
 
-                    Operator::L => stack.push(Operand::Boolean(l < r)),
+                    Operator::L => stack.push(Operand::Primitive(Value::Bool(l < r))),
 
-                    Operator::LE => stack.push(Operand::Boolean(l <= r)),
+                    Operator::LE => stack.push(Operand::Primitive(Value::Bool(l <= r))),
 
-                    Operator::E => stack.push(Operand::Boolean(l == r)),
+                    Operator::E => stack.push(Operand::Primitive(Value::Bool(l == r))),
 
-                    Operator::NE => stack.push(Operand::Boolean(l != r)),
+                    Operator::NE => stack.push(Operand::Primitive(Value::Bool(l != r))),
 
                     Operator::Multiply => stack.push(l * r),
 
@@ -35,7 +36,9 @@ pub fn interpret(postfix: &Vec<Operand>) -> Vec<Operand> {
             Operand::Variable(_var_name) => {
                 // Todo - add json context to this function, and extract var_name from it
                 // temp hack
-                stack.push(Operand::Number(2.0));
+                stack.push(Operand::Primitive(Value::Number(
+                    Number::from_f64(2.0).unwrap(),
+                )));
             }
             _ => {
                 stack.push(p.clone().to_owned());
@@ -61,7 +64,12 @@ mod tests {
     fn interpreter_succeeds_adding() -> Result<(), String> {
         let postfix = postfix_for("2+1");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Number(3.0)]);
+        assert_eq!(
+            formula_result,
+            [Operand::Primitive(Value::Number(
+                Number::from_f64(3.0).unwrap()
+            ))]
+        );
         Ok(())
     }
 
@@ -70,7 +78,10 @@ mod tests {
         let postfix = postfix_for("\"hello\"+\"world\"");
 
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::String("helloworld".to_string())]);
+        assert_eq!(
+            formula_result,
+            [Operand::Primitive(Value::String("helloworld".to_string()))]
+        );
         Ok(())
     }
 
@@ -78,7 +89,12 @@ mod tests {
     fn interpreter_succeeds_substracting() -> Result<(), String> {
         let postfix = postfix_for("2-1");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Number(1.0)]);
+        assert_eq!(
+            formula_result,
+            [Operand::Primitive(Value::Number(
+                Number::from_f64(1.0).unwrap()
+            ))]
+        );
         Ok(())
     }
 
@@ -86,7 +102,7 @@ mod tests {
     fn interpreter_succeeds_comparing_numbers_greater() -> Result<(), String> {
         let postfix = postfix_for("2>1");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Boolean(true)]);
+        assert_eq!(formula_result, [Operand::Primitive(Value::Bool(true))]);
         Ok(())
     }
 
@@ -94,7 +110,7 @@ mod tests {
     fn interpreter_succeeds_comparing_numbers_less() -> Result<(), String> {
         let postfix = postfix_for("20<1");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Boolean(false)]);
+        assert_eq!(formula_result, [Operand::Primitive(Value::Bool(false))]);
         Ok(())
     }
 
@@ -102,7 +118,7 @@ mod tests {
     fn interpreter_succeeds_comparing_non_eq_numbers() -> Result<(), String> {
         let postfix = postfix_for("20!=20");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Boolean(false)]);
+        assert_eq!(formula_result, [Operand::Primitive(Value::Bool(false))]);
         Ok(())
     }
 
@@ -110,7 +126,7 @@ mod tests {
     fn interpreter_succeeds_comparing_numbers_less_eq() -> Result<(), String> {
         let postfix = postfix_for("20<=20");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Boolean(true)]);
+        assert_eq!(formula_result, [Operand::Primitive(Value::Bool(true))]);
         Ok(())
     }
 
@@ -118,7 +134,7 @@ mod tests {
     fn interpreter_succeeds_comparing_numbers_ne() -> Result<(), String> {
         let postfix = postfix_for("20!=20");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Boolean(false)]);
+        assert_eq!(formula_result, [Operand::Primitive(Value::Bool(false))]);
         Ok(())
     }
 
@@ -126,7 +142,12 @@ mod tests {
     fn interpreter_succeeds_multiply() -> Result<(), String> {
         let postfix = postfix_for("20*2");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Number(40.0)]);
+        assert_eq!(
+            formula_result,
+            [Operand::Primitive(Value::Number(
+                Number::from_f64(40.0).unwrap()
+            ))]
+        );
         Ok(())
     }
 
@@ -134,7 +155,12 @@ mod tests {
     fn interpreter_succeeds_divide() -> Result<(), String> {
         let postfix = postfix_for("20/2");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Number(10.0)]);
+        assert_eq!(
+            formula_result,
+            [Operand::Primitive(Value::Number(
+                Number::from_f64(10.0).unwrap()
+            ))]
+        );
         Ok(())
     }
 
@@ -142,7 +168,7 @@ mod tests {
     fn interpreter_succeeds_divide_by_zero() -> Result<(), String> {
         let postfix = postfix_for("20/0");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::None]);
+        assert_eq!(formula_result, [Operand::Primitive(Value::Null)]);
         Ok(())
     }
 
@@ -150,7 +176,7 @@ mod tests {
     fn interpreter_succeeds_equality_check() -> Result<(), String> {
         let postfix = postfix_for("2+1=4-1");
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Boolean(true)]);
+        assert_eq!(formula_result, [Operand::Primitive(Value::Bool(true))]);
         Ok(())
     }
 
@@ -159,7 +185,12 @@ mod tests {
         let postfix = postfix_for("2+extraValue");
 
         let formula_result = interpret(&postfix?);
-        assert_eq!(formula_result, [Operand::Number(4.0)]);
+        assert_eq!(
+            formula_result,
+            [Operand::Primitive(Value::Number(
+                Number::from_f64(4.0).unwrap()
+            ))]
+        );
         Ok(())
     }
 }

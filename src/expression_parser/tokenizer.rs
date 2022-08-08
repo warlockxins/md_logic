@@ -1,3 +1,4 @@
+use serde_json::{Number, Value};
 use std::iter::Enumerate;
 use std::iter::Peekable;
 use std::str::Chars;
@@ -102,11 +103,7 @@ impl<'a> Tokenizer<'a> {
 
         for o in self.operands {
             match o {
-                Operand::Boolean(_)
-                | Operand::None
-                | Operand::Number(_)
-                | Operand::String(_)
-                | Operand::Variable(_) => {
+                Operand::Primitive(_) | Operand::Variable(_) => {
                     postfix.push(o);
                 }
                 Operand::OpenParen => {
@@ -188,7 +185,7 @@ impl<'a> Tokenizer<'a> {
         if is_closed {
             let str_literal = &self.expression[range.started_at..range.ended_at];
 
-            return Ok(Operand::String(str_literal.to_string()));
+            return Ok(Operand::Primitive(Value::String(str_literal.to_string())));
         } else {
             return Err(format!("no closing \" at {}", range.started_at));
         }
@@ -254,7 +251,7 @@ impl<'a> Tokenizer<'a> {
         let reserved_bool_keywords = ["true", "false"];
 
         if reserved_bool_keywords.contains(&variable) {
-            return Ok(Operand::Boolean(variable == "true"));
+            return Ok(Operand::Primitive(Value::Bool(variable == "true")));
         }
 
         return Ok(Operand::Variable(variable.to_string()));
@@ -292,9 +289,9 @@ impl<'a> Tokenizer<'a> {
             return Err(format!("empty number at {}", range.started_at));
         }
 
-        let res_number = number.parse::<f32>().unwrap();
-
-        return Ok(Operand::Number(res_number));
+        let res_number = number.parse::<f64>().unwrap();
+        let res_operand = Operand::Primitive(Value::Number(Number::from_f64(res_number).unwrap()));
+        return Ok(res_operand);
     }
 
     pub fn insert_start(&mut self, o: Operand) {
@@ -361,14 +358,14 @@ mod tests {
         assert_eq!(
             postfix,
             vec![
-                Operand::Number(100.0),
+                Operand::Primitive(Value::Number(Number::from_f64(100.0).unwrap())),
                 Operand::Variable("aA".to_string()),
                 Operand::Variable("b".to_string()),
                 Operand::Variable("c".to_string()),
                 Operand::OperatorToken(Operator::Multiply),
                 Operand::OperatorToken(Operator::Plus),
                 Operand::Variable("d".to_string()),
-                Operand::Number(2.0),
+                Operand::Primitive(Value::Number(Number::from_f64(2.0).unwrap())),
                 Operand::OperatorToken(Operator::Multiply),
                 Operand::OperatorToken(Operator::Substract),
                 Operand::OperatorToken(Operator::LE),
@@ -396,7 +393,7 @@ mod tests {
                 Operand::OperatorToken(Operator::Multiply),
                 Operand::OperatorToken(Operator::Plus),
                 Operand::Variable("d".to_string()),
-                Operand::Number(2.0),
+                Operand::Primitive(Value::Number(Number::from_f64(2.0).unwrap())),
                 Operand::OperatorToken(Operator::Multiply),
                 Operand::OperatorToken(Operator::Substract),
             ]
@@ -442,7 +439,10 @@ mod tests {
         let postfix = parser.to_postfix();
         assert!(postfix.is_ok());
 
-        assert_eq!(postfix?, vec![Operand::String("hello".to_string())]);
+        assert_eq!(
+            postfix?,
+            vec![Operand::Primitive(Value::String("hello".to_string()))]
+        );
         Ok(())
     }
 
@@ -475,7 +475,12 @@ mod tests {
         let postfix = parser.to_postfix();
         assert!(postfix.is_ok());
 
-        assert_eq!(postfix?, vec![Operand::Number(101.001)]);
+        assert_eq!(
+            postfix?,
+            vec![Operand::Primitive(Value::Number(
+                Number::from_f64(101.001).unwrap()
+            )),]
+        );
         Ok(())
     }
 
@@ -504,7 +509,7 @@ mod tests {
         let postfix = parser.to_postfix();
         assert!(postfix.is_ok());
 
-        assert_eq!(postfix?, vec![Operand::Boolean(true)]);
+        assert_eq!(postfix?, vec![Operand::Primitive(Value::Bool(true))]);
         Ok(())
     }
 
@@ -517,7 +522,9 @@ mod tests {
         let start_with_operand = parser.starts_with_operand();
         assert_eq!(start_with_operand, true);
 
-        parser.insert_start(Operand::Number(11.0));
+        parser.insert_start(Operand::Primitive(Value::Number(
+            Number::from_f64(11.0).unwrap(),
+        )));
 
         let postfix = parser.to_postfix();
         assert!(postfix.is_ok());
@@ -525,8 +532,8 @@ mod tests {
         assert_eq!(
             postfix?,
             vec![
-                Operand::Number(11.0),
-                Operand::Number(10.0),
+                Operand::Primitive(Value::Number(Number::from_f64(11.0).unwrap())),
+                Operand::Primitive(Value::Number(Number::from_f64(10.0).unwrap())),
                 Operand::OperatorToken(Operator::L)
             ]
         );
@@ -543,7 +550,10 @@ mod tests {
         assert_eq!(start_with_operand, false);
 
         parser.insert_start(Operand::OperatorToken(Operator::E));
-        parser.insert_start(Operand::Number(11.0));
+        parser.insert_start(
+            // Operand::Number(11.0)
+            Operand::Primitive(Value::Number(Number::from_f64(11.0).unwrap())),
+        );
 
         let postfix = parser.to_postfix();
         assert!(postfix.is_ok());
@@ -551,8 +561,8 @@ mod tests {
         assert_eq!(
             postfix?,
             vec![
-                Operand::Number(11.0),
-                Operand::Number(10.0),
+                Operand::Primitive(Value::Number(Number::from_f64(11.0).unwrap())),
+                Operand::Primitive(Value::Number(Number::from_f64(10.0).unwrap())),
                 Operand::OperatorToken(Operator::E)
             ]
         );
@@ -568,8 +578,8 @@ mod tests {
         assert_eq!(
             postfix?,
             vec![
-                Operand::Boolean(true),
-                Operand::Boolean(false),
+                Operand::Primitive(Value::Bool(true)),
+                Operand::Primitive(Value::Bool(false)),
                 Operand::OperatorToken(Operator::Plus)
             ]
         );
@@ -622,7 +632,7 @@ fn is_postfix_valid(postfix: &Vec<Operand>) -> bool {
             let left = stack.pop().is_some();
 
             if right == left {
-                stack.push(&Operand::None);
+                stack.push(&Operand::Primitive(Value::Null));
                 valid = true;
             }
         } else {
