@@ -27,6 +27,8 @@ enum Opss {
     Multiply(OrderingOperation),
     #[serde(alias = "/")]
     Division(OrderingOperation),
+    #[serde(alias = "and")]
+    And(OrderingOperation),
     #[serde(alias = "var")]
     Var(String),
 }
@@ -159,6 +161,20 @@ impl Opss {
                 AllCombined::Primitive(Value::Null)
             }
             Opss::Var(key) => AllCombined::Primitive(get_context_var(key, &context)),
+            Opss::And(l) => {
+                let l_results = execute_combined_list(&l, context);
+
+                if l_results.len() == 0 {
+                    return AllCombined::Primitive(Value::Bool(false));
+                }
+
+                let all_true = l_results.iter().all(|x| match x {
+                    AllCombined::Primitive(Value::Bool(true)) => true,
+                    _ => false,
+                });
+
+                return AllCombined::Primitive(Value::Bool(all_true));
+            }
         }
     }
 }
@@ -169,14 +185,14 @@ fn execute_combined_list(l: &Vec<AllCombined>, context: &Value) -> Vec<AllCombin
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
-enum AllCombined {
+pub enum AllCombined {
     Ops(Opss),
     OpList(Vec<AllCombined>),
     Primitive(Value),
 }
 
 impl AllCombined {
-    fn execute(&self, context: &Value) -> AllCombined {
+    pub fn execute(&self, context: &Value) -> AllCombined {
         match self {
             AllCombined::OpList(l) => {
                 let s: Vec<AllCombined> = execute_combined_list(&l, context);
@@ -257,6 +273,15 @@ mod tests {
                 true,
             ),
             (r#" { "=" : [{"var" : "rounds"}, 4] }"#, true),
+            (
+                r#"{
+                "and": [
+                    { ">": [3, 1] },
+                    { "<": [1, 3] }
+                ]
+            }"#,
+                true,
+            ),
         ];
 
         let context: Value = serde_json::from_str(

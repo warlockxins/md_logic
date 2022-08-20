@@ -1,6 +1,10 @@
 extern crate serde_json;
 
-use std::fs;
+use std::time::SystemTime;
+
+use serde_json::Value;
+
+use crate::json_logic::AllCombined;
 mod context;
 mod expression_parser;
 mod logic_table;
@@ -8,24 +12,41 @@ mod logic_table;
 mod json_logic;
 
 fn main() {
-    // todo - wrap in rest apis
-    let contents =
-        fs::read_to_string("./samples/table.md").expect("Something went wrong reading the file");
+    const DATA: &str = r#" 
+    {
+      "and": [
+            { ">": [3, 1] },
+            { "<": [1, 3] }
+            ]
+          }
+          "#;
+    // { "=" : [{"var" : "challenger.name"}, "Dread Pirate Roberts"] }
 
-    let json_str = r#"
-    { "season": "Fall", "guestCount": 8 }
-    "#;
+    let context: Value = serde_json::from_str(
+        r#"{
+            "rounds" : 4, 
+            "champ" : {
+              "name" : "Fezzig",
+              "height" : 223
+            },
+            "challenger" : {
+              "name" : "Dread Pirate Roberts",
+              "height" : 183
+            }
+          }"#,
+    )
+    .unwrap();
 
-    let table = logic_table::parse(&contents);
-    let context: serde_json::Value = serde_json::from_str(json_str).unwrap();
+    let now = SystemTime::now();
 
-    let result = logic_table::run_table(&table, &context);
-    match result {
-        Ok(response) => {
-            println!("success {:?}", response)
-        }
-        Err(message) => {
-            println!("failed: {}", message)
-        }
+    let p: AllCombined = serde_json::from_str(DATA).unwrap();
+
+    p.execute(&context);
+
+    let elapsed = now.elapsed();
+
+    match elapsed {
+        Ok(duration) => println!("elapsed {}", duration.as_millis()),
+        Err(error) => println!("Error: {error:?}"),
     }
 }
