@@ -29,9 +29,6 @@ pub struct Row {
 }
 
 pub fn parse(contents: &String) -> Table {
-    let mut new_line = true;
-    let mut tmp: String = String::new();
-
     let mut table: Table = Table {
         rows: vec![],
         defs: Definition {
@@ -40,27 +37,15 @@ pub fn parse(contents: &String) -> Table {
         },
     };
 
-    for c in contents.chars() {
-        if c == '|' {
-            if new_line {
-                table.rows.push(Row { cells: vec![] });
+    for line in contents.lines() {
+        let columns = line.split("|");
 
-                new_line = false;
-            } else {
-                if let Some(row) = table.rows.last_mut() {
-                    row.cells.push(tmp.trim().to_string());
-                }
-            }
-            tmp.clear();
-            continue;
+        let mut row = Row { cells: vec![] };
+
+        for column_content in columns {
+            row.cells.push(column_content.trim().to_string());
         }
-
-        if c == '\n' {
-            new_line = true;
-            continue;
-        }
-
-        tmp.push(c);
+        table.rows.push(row);
     }
 
     for col_index in 0..table.rows[HEADER_ROW].cells.len() {
