@@ -28,7 +28,7 @@ pub struct Row {
     pub cells: Vec<String>,
 }
 
-pub fn parse(contents: &String) -> Table {
+pub fn parse(contents: &String) -> Result<Table, String> {
     let mut table: Table = Table {
         rows: vec![],
         defs: Definition {
@@ -38,13 +38,22 @@ pub fn parse(contents: &String) -> Table {
     };
 
     for line in contents.lines() {
-        let columns = line.split("|");
+        let mut columns: Vec<&str> = line.split("|").collect();
+
+        // note - split by | will also create/have empty column on left first place, and most right
+        if columns.len() < 4 {
+            return Err("incorrect table column size - need at least 1 in, 1 out".to_owned());
+        }
+
+        columns.pop();
+        columns.remove(0);
 
         let mut row = Row { cells: vec![] };
 
         for column_content in columns {
             row.cells.push(column_content.trim().to_string());
         }
+
         table.rows.push(row);
     }
 
@@ -66,7 +75,7 @@ pub fn parse(contents: &String) -> Table {
         }
     }
 
-    table
+    Ok(table)
 }
 
 pub fn run_table(
@@ -138,7 +147,7 @@ mod tests {
         let contents = fs::read_to_string("./samples/table.md")
             .expect("Something went wrong reading the TEST file");
 
-        Ok(parse(&contents))
+        parse(&contents)
     }
 
     #[test]
