@@ -12,11 +12,6 @@ pub struct Definition {
     pub outputs: Vec<(String, String)>,
 }
 
-const HEADER_ROW: usize = 0;
-const IO_ROW: usize = 1;
-const TYPE_ROW: usize = 2;
-const LOGIC_START_ROW: usize = 4;
-
 #[derive(Debug)]
 pub struct Table {
     pub rows: Vec<Row>,
@@ -28,7 +23,7 @@ pub struct Row {
     pub cells: Vec<String>,
 }
 
-pub fn parse(contents: &String) -> Result<Table, String> {
+pub fn parse(contents: &str) -> Result<Table, String> {
     let mut table: Table = Table {
         rows: vec![],
         defs: Definition {
@@ -37,7 +32,15 @@ pub fn parse(contents: &String) -> Result<Table, String> {
         },
     };
 
-    for line in contents.lines() {
+    let mut current_line = 0;
+    let mut definition_rows: Vec<Row> = vec![];
+
+    for untrimmed_line in contents.lines() {
+        let line = untrimmed_line.trim();
+        if line.len() == 0 {
+            continue;
+        }
+
         let mut columns: Vec<&str> = line.split("|").collect();
 
         // note - split by | will also create/have empty column on left first place, and most right
@@ -54,13 +57,32 @@ pub fn parse(contents: &String) -> Result<Table, String> {
             row.cells.push(column_content.trim().to_string());
         }
 
-        table.rows.push(row);
+        // 4 is a number of required definition rows
+        if current_line >= 4 {
+            table.rows.push(row);
+        } else {
+            definition_rows.push(row);
+        }
+
+        current_line += 1;
     }
 
-    for col_index in 0..table.rows[HEADER_ROW].cells.len() {
-        let io_def = &table.rows[IO_ROW].cells[col_index];
-        let column_variable = &table.rows[HEADER_ROW].cells[col_index];
-        let type_variable = &table.rows[TYPE_ROW].cells[col_index];
+    if table.rows.len() == 0 {
+        return Err("table has incorrect data row size".to_owned());
+    }
+
+    if definition_rows.len() != 4 {
+        return Err("table definitions are not correct".to_string());
+    }
+
+    let header_row: usize = 0;
+    let io_row: usize = 1;
+    let type_row: usize = 2;
+
+    for col_index in 0..definition_rows[header_row].cells.len() {
+        let io_def = &definition_rows[io_row].cells[col_index];
+        let column_variable = &definition_rows[header_row].cells[col_index];
+        let type_variable = &definition_rows[type_row].cells[col_index];
 
         if io_def.starts_with("-") && io_def.ends_with("-") {
             table
@@ -85,7 +107,7 @@ pub fn run_table(
     let mut outputs: Vec<HashMap<String, Operand>> = vec![];
     let mut row_is_true;
 
-    for row_index in LOGIC_START_ROW..table.rows.len() {
+    for row_index in 0..table.rows.len() {
         row_is_true = true;
 
         for col_index in 0..table.defs.inputs.len() {
@@ -119,7 +141,6 @@ pub fn run_table(
         }
 
         if row_is_true {
-            // println!("should set output to {:?}", table.defs.outputs);
             let mut output_result: HashMap<String, Operand> = HashMap::new();
 
             let offset = table.defs.inputs.len();
@@ -155,13 +176,13 @@ mod tests {
         let table = get_test_table()?;
         assert_eq!(table.defs.inputs.len(), 2);
         assert_eq!(table.defs.outputs.len(), 1);
-        assert_eq!(table.rows.len(), 6);
+        assert_eq!(table.rows.len(), 2); // actual 2 data/logic rows
 
         assert_eq!(table.defs.inputs[0].1, "string".to_owned());
         assert_eq!(table.defs.inputs[1].1, "number".to_owned());
         assert_eq!(table.defs.outputs[0].1, "string".to_owned());
 
-        assert_eq!(table.rows[5].cells[2], "\"Roastbeef\"".to_owned());
+        assert_eq!(table.rows[1].cells[2], "\"Roastbeef\"".to_owned());
 
         Ok(())
     }
@@ -188,5 +209,22 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn md_table_expect_failure_insufficient_wrows() -> Result<(), String> {
+        let contents = r#"
+        | season   | guestCount | desiredDish |
+        |----------|------------|------------:|
+        | string   | number     |      string |
+        | ##       | ##         |          ## |
+        "#;
+
+        let table = parse(&contents);
+
+        match table {
+            Ok(_) => Err("table should be broken".to_string()),
+            Err(_) => Ok(()),
+        }
     }
 }
